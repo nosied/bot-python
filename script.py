@@ -2,21 +2,43 @@ import cv2
 import pyautogui
 import numpy as np
 import time
+import mysql.connector
+import pyperclip
+import requests
+
+# Conectar ao banco de dados MySQL
+def conectar_banco():
+    conexao = mysql.connector.connect(
+        host='localhost',  # Atualize com seu host
+        user='root',       # Atualize com seu usuário
+        password='',  # Atualize com sua senha
+        database='bot-wpp'  # Atualize com o nome do seu banco de dados
+    )
+    return conexao
+
+# Verifica URLs no banco de dados
+def obter_urls_nao_abertas(conexao):
+    cursor = conexao.cursor()
+    cursor.execute("SELECT id, link, details FROM ml_generate WHERE status = 0")
+    resultados = cursor.fetchall()
+    print("Log: Linhas retornadas do banco de dados:", resultados)  # Log das linhas do banco de dados
+    return resultados
+
+# Atualiza o status da URL para 'aberta'
+def marcar_url_como_aberta(conexao, id_url):
+    cursor = conexao.cursor()
+    cursor.execute("UPDATE ml_generate SET status = 1 WHERE id = %s", (id_url,))
+    conexao.commit()
 
 # Função para localizar a imagem na tela e clicar
 def localizar_e_clicar(imagem, confidencia=0.8):
     screenshot = pyautogui.screenshot()
-    screenshot = np.array(screenshot, dtype=np.uint8)  # Garante que seja CV_8U
+    screenshot = np.array(screenshot, dtype=np.uint8)
     screenshot = cv2.cvtColor(screenshot, cv2.COLOR_RGB2BGR)
-
-    # Carrega a imagem do botão e converte para CV_8U, se necessário
     template = cv2.imread(imagem, cv2.IMREAD_COLOR)
     template = template.astype(np.uint8)
-
-    # Usa o método de correspondência de imagem
     resultado = cv2.matchTemplate(screenshot, template, cv2.TM_CCOEFF_NORMED)
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(resultado)
-
     if max_val >= confidencia:
         x, y = max_loc
         altura, largura = template.shape[:2]
@@ -25,18 +47,72 @@ def localizar_e_clicar(imagem, confidencia=0.8):
         pyautogui.moveTo(centro_x, centro_y, duration=0.2)
         pyautogui.click()
         time.sleep(0.5)
-        print(f"Imagem encontrada e clicada em ({centro_x}, {centro_y})")
         return True
     else:
-        print("Imagem não encontrada na tela.")
         return False
 
-# Exemplo de uso
-imagem_ver_produto = 'botao_ver_produto.png'
-imagem_botao = 'botao_gerar_link.png'
-if localizar_e_clicar(imagem_ver_produto):
-    time.sleep(2)
-    if localizar_e_clicar(imagem_botao):
-        print("Botão clicado com sucesso!")
+# Envia a URL concatenada para uma API
+def enviar_para_api(url_completa):
+    response = requests.post('http://localhost:3001/send-message', json={'groupId': "120363343009794218@g.us", 'message': url_completa})
+    if response.status_code == 200:
+        print("URL enviada com sucesso!")
     else:
-        print("Botão não foi encontrado.")
+        print("Falha ao enviar a URL:", response.status_code)
+
+# Loop principal para verificar e abrir URLs
+conexao = conectar_banco()
+try:
+    while True:
+        # Fecha a conexão existente e cria uma nova para garantir resultados atualizados
+        conexao.close()
+        conexao = conectar_banco()
+
+        # Executa a consulta
+        urls = obter_urls_nao_abertas(conexao)
+        if urls:
+            print("URLs encontradas:", urls)  # Log para verificar os registros
+            for id_url, link, details in urls:
+                try:
+                    # Acessa a URL diretamente na aba atual
+                    pyperclip.copy(link)
+                    pyautogui.hotkey('ctrl', 'l')  # Seleciona a barra de endereço
+                    pyautogui.hotkey('ctrl', 'v')  # Cola a URL
+                    pyautogui.press('enter')
+                    time.sleep(7)  # Espera a página carregar
+
+                    # Clica nos botões sequenciais
+                    if localizar_e_clicar('botao_ver_produto.png'):
+                        time.sleep(3)
+                        if localizar_e_clicar('botao_gerar_link.png'):
+                            time.sleep(4)
+                            url_gerada = pyperclip.paste()  # Pega a URL copiada automaticamente
+                            url_completa = details + ' \n ' + url_gerada
+                            time.sleep(2)
+                            enviar_para_api(url_completa)
+
+                            # Marca a URL como aberta no banco
+                            marcar_url_como_aberta(conexao, id_url)
+                        else:
+                            print("Botão 'gerar link' não encontrado.")
+                            # Marca a URL como aberta
+                            marcar_url_como_aberta(conexao, id_url)
+                    else:
+                        print("Botão 'ver produto' não encontrado.")
+                        # Marca a URL como aberta
+                        marcar_url_como_aberta(conexao, id_url)
+                    
+                    # Redireciona para uma página neutra (ex: Google) para preparar a próxima iteração
+                    pyperclip.copy("https://google.com")
+                    pyautogui.hotkey('ctrl', 'l')  # Seleciona a barra de endereço
+                    pyautogui.hotkey('ctrl', 'v')  # Cola a URL
+                    pyautogui.press('enter')
+                    time.sleep(7)  # Espera a página carregar
+                except Exception as e:
+                    print(f"Erro ao processar a URL {link}: {e}")
+        else:
+            print("Nenhuma nova URL encontrada. Verificando novamente em 30 segundos.")
+            time.sleep(30)  # Aguarda 30 segundos antes da próxima verificação
+except Exception as e:
+    print(f"Erro crítico no loop principal: {e}")
+finally:
+    conexao.close()  # Fecha a conexão ao final da execução do script
