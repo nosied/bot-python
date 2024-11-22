@@ -9,7 +9,7 @@ import requests
 # Conectar ao banco de dados MySQL
 def conectar_banco():
     conexao = mysql.connector.connect(
-        host='localhost',  # Atualize com seu host
+        host='192.168.3.4',  # Atualize com seu host
         user='root',       # Atualize com seu usuário
         password='',  # Atualize com sua senha
         database='bot-wpp'  # Atualize com o nome do seu banco de dados
@@ -28,6 +28,12 @@ def obter_urls_nao_abertas(conexao):
 def marcar_url_como_aberta(conexao, id_url):
     cursor = conexao.cursor()
     cursor.execute("UPDATE ml_generate SET status = 1 WHERE id = %s", (id_url,))
+    conexao.commit()
+
+def marcar_url_como_aberta_erro(conexao, id_url):
+    cursor = conexao.cursor()
+    cursor.execute("UPDATE ml_generate SET status = 2 WHERE id = %s", (id_url,))
+
     conexao.commit()
 
 # Função para localizar a imagem na tela e clicar
@@ -52,16 +58,19 @@ def localizar_e_clicar(imagem, confidencia=0.8):
         return False
 
 # Envia a URL concatenada para uma API
-def enviar_para_api(url_completa):
-    response = requests.post('http://localhost:3001/send-message', json={'groupId': "120363343009794218@g.us", 'message': url_completa})
+def enviar_para_api(url_completa, link):
+    response = requests.post('http://192.168.3.4:3001/send-message', json={'groupId': "120363343009794218@g.us", 'message': url_completa})
     if response.status_code == 200:
-        print("URL enviada com sucesso!")
+        # Marca a URL como aberta no banco
+        marcar_url_como_aberta(conexao, id_url)
+        print("URL"+link+ "enviada com sucesso!")
     else:
         print("Falha ao enviar a URL:", response.status_code)
 
 # Loop principal para verificar e abrir URLs
 conexao = conectar_banco()
 try:
+    time.sleep(20)
     while True:
         # Fecha a conexão existente e cria uma nova para garantir resultados atualizados
         conexao.close()
@@ -82,31 +91,41 @@ try:
 
                     # Clica nos botões sequenciais
                     if localizar_e_clicar('botao_ver_produto.png'):
-                        time.sleep(3)
+                        time.sleep(4)
                         if localizar_e_clicar('botao_gerar_link.png'):
                             time.sleep(4)
                             url_gerada = pyperclip.paste()  # Pega a URL copiada automaticamente
                             url_completa = details + ' \n ' + url_gerada
-                            time.sleep(2)
-                            enviar_para_api(url_completa)
+                            time.sleep(3)
+                            enviar_para_api(url_completa, link)
+
+                        else:
+                            print("Botão 'gerar link' não encontrado.")
+                            # Marca a URL como aberta
+                            marcar_url_como_aberta_erro(conexao, id_url)
+                    else:
+                        print("Botão 'ver produto' não encontrado.")
+                        time.sleep(2)
+                        if localizar_e_clicar('botao_gerar_link.png'):
+                            time.sleep(3)
+                            url_gerada = pyperclip.paste()  # Pega a URL copiada automaticamente
+                            url_completa = details + ' \n ' + url_gerada
+                            time.sleep(3)
+                            enviar_para_api(url_completa, link)
 
                             # Marca a URL como aberta no banco
                             marcar_url_como_aberta(conexao, id_url)
                         else:
                             print("Botão 'gerar link' não encontrado.")
                             # Marca a URL como aberta
-                            marcar_url_como_aberta(conexao, id_url)
-                    else:
-                        print("Botão 'ver produto' não encontrado.")
-                        # Marca a URL como aberta
-                        marcar_url_como_aberta(conexao, id_url)
+                            marcar_url_como_aberta_erro(conexao, id_url)
                     
                     # Redireciona para uma página neutra (ex: Google) para preparar a próxima iteração
                     pyperclip.copy("https://google.com")
                     pyautogui.hotkey('ctrl', 'l')  # Seleciona a barra de endereço
                     pyautogui.hotkey('ctrl', 'v')  # Cola a URL
                     pyautogui.press('enter')
-                    time.sleep(7)  # Espera a página carregar
+                    time.sleep(4)  # Espera a página carregar
                 except Exception as e:
                     print(f"Erro ao processar a URL {link}: {e}")
         else:
