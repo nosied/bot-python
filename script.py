@@ -9,10 +9,10 @@ import requests
 # Conectar ao banco de dados MySQL
 def conectar_banco():
     conexao = mysql.connector.connect(
-        host='192.168.3.4',  # Atualize com seu host
+        host='192.168.3.99',  # Atualize com seu host
         user='root',       # Atualize com seu usuário
         password='',  # Atualize com sua senha
-        database='bot-wpp'  # Atualize com o nome do seu banco de dados
+        database='bot-wwp-prd'  # Atualize com o nome do seu banco de dados
     )
     return conexao
 
@@ -59,11 +59,11 @@ def localizar_e_clicar(imagem, confidencia=0.8):
 
 # Envia a URL concatenada para uma API
 def enviar_para_api(url_completa, link):
-    response = requests.post('http://192.168.3.4:3001/send-message', json={'groupId': "120363343009794218@g.us", 'message': url_completa})
+    response = requests.post('http://192.168.3.99:3001/send-message', json={'groupId': "120363343009794218@g.us", '_data': {'notifyName': "Deison"}, 'message': url_completa})
     if response.status_code == 200:
         # Marca a URL como aberta no banco
         marcar_url_como_aberta(conexao, id_url)
-        print("URL"+link+ "enviada com sucesso!")
+        print("URL: "+link+ " enviada com sucesso!")
     else:
         print("Falha ao enviar a URL:", response.status_code)
 
@@ -91,12 +91,12 @@ try:
 
                     # Clica nos botões sequenciais
                     if localizar_e_clicar('botao_ver_produto.png'):
-                        time.sleep(4)
+                        time.sleep(5)
                         if localizar_e_clicar('botao_gerar_link.png'):
-                            time.sleep(4)
+                            time.sleep(5)
                             url_gerada = pyperclip.paste()  # Pega a URL copiada automaticamente
                             url_completa = details + ' \n ' + url_gerada
-                            time.sleep(3)
+                            time.sleep(4)
                             enviar_para_api(url_completa, link)
 
                         else:
@@ -105,12 +105,12 @@ try:
                             marcar_url_como_aberta_erro(conexao, id_url)
                     else:
                         print("Botão 'ver produto' não encontrado.")
-                        time.sleep(2)
+                        time.sleep(3)
                         if localizar_e_clicar('botao_gerar_link.png'):
-                            time.sleep(3)
+                            time.sleep(4)
                             url_gerada = pyperclip.paste()  # Pega a URL copiada automaticamente
                             url_completa = details + ' \n ' + url_gerada
-                            time.sleep(3)
+                            time.sleep(4)
                             enviar_para_api(url_completa, link)
 
                             # Marca a URL como aberta no banco
