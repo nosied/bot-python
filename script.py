@@ -110,20 +110,20 @@ try:
                     pyautogui.hotkey('ctrl', 'l')  # Seleciona a barra de endereço
                     pyautogui.hotkey('ctrl', 'v')  # Cola a URL
                     pyautogui.press('enter')
-                    time.sleep(7)  # Espera a página carregar
+                    time.sleep(6)  # Espera a página carregar
 
                     # Clica nos botões sequenciais
                     if localizar_e_clicar('botao_ver_produto.png'):
-                        time.sleep(5)
+                        time.sleep(4)
                         if localizar_e_clicar('botao_gerar_link.png'):
-                            time.sleep(5)
-                            if localizar_e_clicar_primeiro('botao_igual.png'):
+                            time.sleep(1.5)
+                            if localizar_e_clicar_primeiro('botao_copiar.png'):
                                 print("Primeiro botão clicado com sucesso!")
                             else:
                                 print("Não foi possível clicar no primeiro botão.")
                             url_gerada = pyperclip.paste()  # Pega a URL copiada automaticamente
                             url_completa = details + ' \n ' + url_gerada
-                            time.sleep(4)
+                            time.sleep(1)
                             enviar_para_api(url_completa, link)
 
                         else:
@@ -134,14 +134,14 @@ try:
                         print("Botão 'ver produto' não encontrado.")
                         time.sleep(3)
                         if localizar_e_clicar('botao_gerar_link.png'):
-                            time.sleep(4)
+                            time.sleep(1.5)
                             if localizar_e_clicar_primeiro('botao_copiar.png'):
                                 print("Primeiro botão clicado com sucesso!")
                             else:
                                 print("Não foi possível clicar no primeiro botão.")
                             url_gerada = pyperclip.paste()  # Pega a URL copiada automaticamente
                             url_completa = details + ' \n ' + url_gerada
-                            time.sleep(4)
+                            time.sleep(1)
                             enviar_para_api(url_completa, link)
 
                             # Marca a URL como aberta no banco
@@ -156,7 +156,7 @@ try:
                     pyautogui.hotkey('ctrl', 'l')  # Seleciona a barra de endereço
                     pyautogui.hotkey('ctrl', 'v')  # Cola a URL
                     pyautogui.press('enter')
-                    time.sleep(4)  # Espera a página carregar
+                    time.sleep(2)  # Espera a página carregar
                 except Exception as e:
                     print(f"Erro ao processar a URL {link}: {e}")
         else:
